@@ -1,0 +1,24 @@
+---
+title: "Bootstrap Project: Dataset 3"
+author: "Cesar Conejo, Arturo Prieto"
+date: "3/10/2021"
+output: pdf_document
+header-includes:
+  - \usepackage{algorithm2e}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+# Introduction
+
+
+# Robust regression
+
+# Backward elimination
+
+# Confidence Intervals
+
+# Mean Response
