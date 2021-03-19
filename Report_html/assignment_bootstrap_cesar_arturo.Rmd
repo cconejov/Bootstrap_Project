@@ -1,0 +1,334 @@
+---
+title: "Bootstrap Project"
+author: "Arturo Prieto Tirado, César Antonio Conejo Villalobos"
+date: "18/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache=TRUE,message=FALSE, warning=FALSE)
+
+# Load Libraries
+
+library(MASS)
+library(bootstrap)
+library(boot)
+
+#import dataset
+
+# Arturo path
+#datax=read.csv("C:/Users/arpri/OneDrive/Escritorio/libros/master/Tercer Semicuatrimestre/Simulación y Métodos de Remuestreo/data_3.csv")
+
+# Cesar path 
+datax = read.csv("Project2_Bootstrap/data_3.csv", header=TRUE)
+```
+
+Goal: Build a linear regression model to predict `y` in terms of some of the three variables `x1`,`x2` and `x3`.
+
+0. The dataset contains outliers and after building any OLS model it can be checked that the error residuals are not normally distributed. 
+
+```{r}
+model.lm <- lm(y ~  x1 + x2 + x3, data = datax)
+summary(model.lm)$coef
+
+#Diagnostics plots
+par(mfrow=c(2,2))
+plot(model.lm)
+rm(model.lm)
+```
+
+
+
+
+1. Build a robust linear regression model with the three covariates and use (95%) bootstrap confidence intervals on the regressors’ coefficients to study their significance.
+
+
+```{r}
+# Arturo: Bootstrap pairs
+
+#first estimation from the data
+
+fit=rlm(y~. ,data=datax)
+est_coeff=fit$coefficients
+
+#function to obtain coefficients from a linear regression model
+rrpair<-function(x,xdata){
+  rlm(y~.,data=xdata[x,],maxit=100)$coefficients
+}
+#get a sample of bootstrapped coefficients using the first 100 rows of the bootstrap generated dataset and doing this B times
+set.seed(1)
+B= 100   #1000
+rbet<-bootstrap(x=1:100,nboot=B,theta=rrpair,xdata=datax)$thetastar
+
+# Basic bootstrap interval (1-alpha so exchange limits)
+2*est_coeff[1]-quantile(rbet[1,],c(0.975,0.025))
+2*est_coeff[2]-quantile(rbet[2,],c(0.975,0.025))
+2*est_coeff[3]-quantile(rbet[3,],c(0.975,0.025))
+2*est_coeff[4]-quantile(rbet[4,],c(0.975,0.025))
+```
+
+
+```{r}
+# Cesar: Bootstrapping residuals (I think this is better in the case of outliers)
+
+#function to generate coefficients in the residual sense
+#instead of just sampling with replacement from our original sample to get new x,y
+#now we sample from the residuals of the original model (rres) and define our new
+#bootstrap sample as y_fit=ygorro+epsilon with epsilon="x" in this case
+#and now fit a model on this new y
+res_rob_rg <- function(x,beta,xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + beta[4]*xdata$x3 + x
+  bmodel <- rlm(y_fit ~ x1 + x2 + x3, data = xdata)
+  return(coef(bmodel))
+}
+
+rres    <- fit$residuals
+rbeta.h <- coef(fit)
+
+B <- 100
+set.seed(1)
+coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = datax)$thetastar
+
+
+# Basic Bootstrap
+
+2*rbeta.h[1] - quantile(coeff.res[1,], c(0.975,0.025))
+2*rbeta.h[2] - quantile(coeff.res[2,], c(0.975,0.025))
+2*rbeta.h[3] - quantile(coeff.res[3,], c(0.975,0.025))
+2*rbeta.h[4] - quantile(coeff.res[4,], c(0.975,0.025))
+
+#  BCa (Does not work)
+# bcanon(rres, B, res_rob_rg, beta = rbeta.h, xdata = data)
+```
+
+
+
+2. Use backward elimination to select the relevant covariates and provide the chosen regression model.
+
+(residual) Approach in class, problemset6. Estimate the adjusted R squared and find the bigger one taking into account their uncertainty estimate pm bootstrap standard error. In order to reduce the standard error, take B=1000.  First for the complete model
+
+```{r}
+B=500
+k=3 # 3 coefficients
+n=length(datax$y)
+#calculate the f statistic from the variances of the residuals... same as in model summary
+r2original=var(fit$fitted.values)/var(datax$y)
+(f.hat=1-((n-1)/(n-k-1))*(1-r2original))
+
+# c.
+#define function of adj r squared to pass to bootstrap
+adjrsq_residuals=function(x,beta,xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + beta[4]*xdata$x3 + x
+  bmodel=rlm(y_fit~x1+x2+x3,data=xdata)
+  R2=var(bmodel$fitted.values)/var(xdata$y)
+  adjRsq=1-((n-1)/(n-k-1))*(1-R2)
+  return(adjRsq)
+}
+#fit the model to get the residuals and the betas
+model=rlm(y~.,data=datax)
+res = model$residuals
+beta.h = coef(model)
+set.seed(1)
+#generate bootstrap
+adjrsq.res=bootstrap(res,B,adjrsq_residuals,beta=beta.h,xdata=datax)$thetastar
+mean(adjrsq.res)
+sd(adjrsq.res)
+## [1] 34.2
+hist(adjrsq.res,probability=T)
+abline(v=f.hat,col="red")
+#centered at the same value but with lower standard deviation in this case.
+
+```
+
+Now for reduced model with x1+x2
+
+```{r}
+k=2 # 3 coefficients
+n=length(datax$y)
+#calculate the f statistic from the variances of the residuals... same as in model summary
+
+altmodel1=rlm(y~x1+x2, data=datax)
+r2original=var(altmodel1$fitted.values)/var(datax$y)
+(f.hat=1-((n-1)/(n-k-1))*(1-r2original))
+
+# c.
+#define function of adj r squared to pass to bootstrap
+adjrsq_residuals=function(x,beta,xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + x
+  bmodel=rlm(y_fit~x1+x2,data=xdata)
+  R2=var(bmodel$fitted.values)/var(xdata$y)
+  adjRsq=1-((n-1)/(n-k-1))*(1-R2)
+  return(adjRsq)
+}
+#fit the model to get the residuals and the betas
+model=rlm(y~x1+x2,data=datax)
+res = model$residuals
+beta.h = coef(model)
+set.seed(1)
+#generate bootstrap
+adjrsq.res=bootstrap(res,B,adjrsq_residuals,beta=beta.h,xdata=datax)$thetastar
+mean(adjrsq.res)
+sd(adjrsq.res)
+## [1] 34.2
+hist(adjrsq.res,probability=T)
+abline(v=f.hat,col="red")
+#centered at the same value but with lower standard deviation in this case.
+
+```
+
+Now for reduced model with x2+x3
+
+```{r}
+k=2 # 3 coefficients
+n=length(datax$y)
+#calculate the f statistic from the variances of the residuals... same as in model summary
+
+altmodel1=rlm(y~x2+x3, data=datax)
+r2original=var(altmodel1$fitted.values)/var(datax$y)
+(f.hat=1-((n-1)/(n-k-1))*(1-r2original))
+
+# c.
+#define function of adj r squared to pass to bootstrap
+adjrsq_residuals=function(x,beta,xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x2 + beta[3]*xdata$x3+ x
+  bmodel=rlm(y_fit~x1+x2,data=xdata)
+  R2=var(bmodel$fitted.values)/var(xdata$y)
+  adjRsq=1-((n-1)/(n-k-1))*(1-R2)
+  return(adjRsq)
+}
+#fit the model to get the residuals and the betas
+model=rlm(y~x2+x3,data=datax)
+res = model$residuals
+beta.h = coef(model)
+set.seed(1)
+#generate bootstrap
+adjrsq.res=bootstrap(res,B,adjrsq_residuals,beta=beta.h,xdata=datax)$thetastar
+mean(adjrsq.res)
+sd(adjrsq.res)
+## [1] 34.2
+hist(adjrsq.res,probability=T)
+abline(v=f.hat,col="red")
+#centered at the same value but with lower standard deviation in this case.
+
+```
+
+Now for reduced model with x1+x3
+
+```{r}
+k=2 # 3 coefficients
+n=length(datax$y)
+#calculate the f statistic from the variances of the residuals... same as in model summary
+
+altmodel1=rlm(y~x1+x3, data=datax)
+r2original=var(altmodel1$fitted.values)/var(datax$y)
+(f.hat=1-((n-1)/(n-k-1))*(1-r2original))
+
+# c.
+#define function of adj r squared to pass to bootstrap
+adjrsq_residuals=function(x,beta,xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x3 + x
+  bmodel=rlm(y_fit~x1+x3,data=xdata)
+  R2=var(bmodel$fitted.values)/var(xdata$y)
+  adjRsq=1-((n-1)/(n-k-1))*(1-R2)
+  return(adjRsq)
+}
+#fit the model to get the residuals and the betas
+model=rlm(y~x1+x3,data=datax)
+res = model$residuals
+beta.h = coef(model)
+set.seed(1)
+#generate bootstrap
+adjrsq.res=bootstrap(res,B,adjrsq_residuals,beta=beta.h,xdata=datax)$thetastar
+mean(adjrsq.res)
+sd(adjrsq.res)
+## [1] 34.2
+hist(adjrsq.res,probability=T)
+abline(v=f.hat,col="red")
+#centered at the same value but with lower standard deviation in this case.
+
+```
+
+
+
+
+
+
+3. Provide 95% confidence intervals on the regression coefficients.
+
+Same as in exercise 1 but with the new model
+
+```{r}
+
+res_rob_rg <- function(x,beta,xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + beta[4]*xdata$x3 + x
+  bmodel <- rlm(y_fit ~ x1 + x2 + x3, data = xdata)
+  return(coef(bmodel))
+}
+
+rres    <- fit$residuals
+rbeta.h <- coef(fit)
+
+B <- 100
+set.seed(1)
+coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = datax)$thetastar
+
+
+# Basic Bootstrap
+
+2*rbeta.h[1] - quantile(coeff.res[1,], c(0.975,0.025))
+2*rbeta.h[2] - quantile(coeff.res[2,], c(0.975,0.025))
+2*rbeta.h[3] - quantile(coeff.res[3,], c(0.975,0.025))
+2*rbeta.h[4] - quantile(coeff.res[4,], c(0.975,0.025))
+
+```
+
+
+4. Build a 95% confidence interval on the mean response when (x1, x2, x3) = (14, 14, 14).
+
+
+
+```{r}
+#function to generate predictions in the residual sense with the best model in 3 (change this)
+res_rob_rg <- function(x,beta,xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + beta[4]*xdata$x3 + x
+  bmodel <- rlm(y_fit ~ x1 + x2 + x3, data = xdata)
+  return(predict(bmodel, data=c(14,14,14)))
+}
+
+#take the best model in 3 (change this)
+
+fit=rlm(y~x1+x2+x3, data=datax)
+rres    <- fit$residuals
+rbeta.h <- coef(fit)
+
+B <- 100
+set.seed(1)
+coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = datax)$thetastar
+
+
+# Basic Bootstrap
+
+2*rbeta.h[1] - quantile(coeff.res[1,], c(0.975,0.025))
+2*rbeta.h[2] - quantile(coeff.res[2,], c(0.975,0.025))
+2*rbeta.h[3] - quantile(coeff.res[3,], c(0.975,0.025))
+2*rbeta.h[4] - quantile(coeff.res[4,], c(0.975,0.025))
+
+#  BCa (Does not work)
+# bcanon(rres, B, res_rob_rg, beta = rbeta.h, xdata = data)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
