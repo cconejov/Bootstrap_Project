@@ -1,11 +1,17 @@
 ---
+output: 
+  pdf_document
+
+subparagraph: yes
+header-includes: |
+  \usepackage{titlesec}
+  \titlespacing{\title}{0pt}{\parskip}{-\parskip}
+
 title: "Bootstrap Project: Dataset 3"
-author: "Cesar Conejo, Arturo Prieto"
-date: "3/10/2021"
-output: pdf_document
-header-includes:
-  - \usepackage{algorithm2e}
+subtitle: Arturo Prieto Tirado, Cesar Conejo Villalobos
 ---
+\vspace{-5truemm}
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -22,7 +28,7 @@ data3 <-  read.csv("data/data_3.csv", header = TRUE)
 
 # Introduction
 
-In this task, we study the dataset `data_3.csv` which contains four columns refering to a response variable `y` and 3 covariates `x1`, `x2`, and `x3`. The goal of the task is to build a linear regression model to `y` in terms of some of the other three variables. However, if we apply a linear model, due to the data constains several outliers, it can be checked in the following picture how the error residuals are no not normally distributed.
+In this project, we study the dataset `data_3.csv` which contains four columns referring to a response variable `y` and 3 covariates `x1`, `x2`, and `x3` for `r nrow(data3)` observations. The goal of the task is to build a linear regression model to `y` in terms of some of the other three variables. However, if we apply a linear model, due to the data contains several outliers, it can be checked in the following picture how the error residuals are not normally distributed..
 
 ```{r}
 model.lm <- lm(y ~  x1 + x2 + x3, data = data3)
@@ -30,7 +36,7 @@ par(mfrow=c(2,2))
 plot(model.lm)
 ```
 
-The coefficients for the linear model are given by $\beta_{1} =$ `r round(coef(model.lm)[1],2)`, $\beta_{2} =$ `r round(coef(model.lm)[2],2)`, $\beta_{3} =$ `r round(coef(model.lm)[3],2)`, and $\beta_{4} =$ `r round(coef(model.lm)[4],2)`. As a result, we build a robust linear regression model `rlm()` from `MASS` package and use the bootstrap to study the significance of the regressors.
+The coefficients for the linear model are given by $\beta_{1} =$ `r round(coef(model.lm)[1],2)`, (corresponding to the intercept) $\beta_{2} =$ `r round(coef(model.lm)[2],2)`, $\beta_{3} =$ `r round(coef(model.lm)[3],2)`, and $\beta_{4} =$ `r round(coef(model.lm)[4],2)`. As a result, we build a robust linear regression model `rlm()` from `MASS` package and use the bootstrap to study the significance of the regressors.
 
 ```{r eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 # Charge to the environment. Do not show results and code
@@ -41,14 +47,14 @@ rm(model.lm)
 
 [//]: # (Build a robust linear regression model with the three covariates and use (95%) bootstrap confidence intervals on the regressors' coeffcients to study their significance.)
 
-In this section, we calibrate a robust linear model with the function `rlm()`. From the output, we can 
+In this section, we calibrate a robust linear model with the function `rlm()`. From the output, we can see a significant change in the coefficients of the linear `linear model` with respect to the `robust linear model`. First, the values related to the intercept and the variable `x3` decrease in the robust model. On the other hand, the weight assigned to the variables `x1` and `x2` increase considerably. As a result, the first insight that we can get is related to the covariate `x3`, in which the increase of one unit of the variable `x3` decreases from $4$ in the linear model to $1.3$.
 
 ```{r}
-model.rlm <- rlm(y ~  x1 + x2 + x3, data = data3)
+model.rlm <- rlm(y ~  x1 + x2 + x3, data = data3, maxit = 200)
 knitr::kable(coef(summary(model.rlm)), digits = 3)
 ```
 
-Then, we can explore a $95\%$ bootstrap confidence interval on the regressors's coefficients in order to study their significance. In this case, we have two alternatives: bootstrap in pairs and bootstrap in residuals. However, given the presence of outliers and influencial observations the bootstap in pairs can lead to low quality estimator. For example, in some samples, it is posible to exclude some influential observations, given a high variability in the results. In conclusion, we tackle this estimation problem using the bootstrap in residuals technique. The following code shows how to realize the bootstrap configuration:
+Additionally, we must consider that the standard error reported in `rml()` for the coefficients is based on asymptotic results. Moreover, the sample size of 100 is relatively small, resulting in not trustworthy estimations of the variability in the coefficient's regression. Therefore, we can explore a $95\%$ bootstrap confidence interval on the regressors' coefficients in order to study their significance. In this case, we have two alternatives: bootstrap in pairs and bootstrap in residuals. However, given the presence of outliers and influential observations the bootstrap in pairs can lead to low-quality estimators. For example, in some samples, it is possible to exclude some influential observations, given a high variability in the results. In conclusion, we tackle this estimation problem using the bootstrap in residuals technique. The following code shows how to realize the bootstrap configuration:
 
 ```{r}
 res_rob_rg <- function(x, beta, xdata){
@@ -60,27 +66,27 @@ res_rob_rg <- function(x, beta, xdata){
 rres    <- model.rlm$residuals
 rbeta.h <- coef(model.rlm)
 
-B <- 100
+B <- 1000
 set.seed(1)
 coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = data3)$thetastar
 ```
 
-Then, the following figure shows the distribution of the estimate parameters. 
+Then, the following figure shows the distribution of the estimate parameters. we can see how the distributions of $\beta_{1}$ and $\beta_{2}$ are symmetric, unimodal, and takes all values greater than zero. In the case of the distribution of $\beta_{3}$, we can see notice a slightly right tail distribution, however, all the values are greater than zero. Finally, if we look at the distribution of $\beta_{4}$ corresponding to the variable `x3` we can see a left-skewed distribution taking positive and negative values. As a result, in some of the resampling scenarios, the coefficient $\beta_{4}$ can be not significant.
 
 ```{r}
 par(mfrow=c(2,2))
-hist(coeff.res[1,], main = "Bootstrap beta1", probability = T, xlab = "beta1")
+hist(coeff.res[1,], main = "Bootstrap beta1 (Intercept)", probability = T, xlab = "beta1")
 abline(v = rbeta.h[1], col ="blue")
-hist(coeff.res[2,], main = "Bootstrap beta2", probability = T, xlab = "beta2")
+hist(coeff.res[2,], main = "Bootstrap beta2 (x1)", probability = T, xlab = "beta2")
 abline(v = rbeta.h[2], col ="blue")
-hist(coeff.res[3,], main = "Bootstrap beta3", probability = T, xlab = "beta3")
+hist(coeff.res[3,], main = "Bootstrap beta3 (x2)", probability = T, xlab = "beta3")
 abline(v = rbeta.h[3], col ="blue")
-hist(coeff.res[4,], main = "Bootstrap beta4", probability = T, xlab = "beta4")
+hist(coeff.res[4,], main = "Bootstrap beta4 (x3)", probability = T, xlab = "beta4")
 abline(v = 0, col ="red")
 abline(v = rbeta.h[4], col ="blue")
 ```
 
-In this case, the previous graphic show how the coefficient related to $\beta_{4}$ contains the value of $0$ inside the interval. Moreover we can compute the basic bootstrap confidence interval
+Moreover, we can compute the basic bootstrap confidence interval for each coefficient. We can confirm that even in the space corresponding to $95\%$ probability we have chances of taking negative values for $\beta_{4}$.
 
 ```{r}
 basic_beta1 <- 2*rbeta.h[1] - quantile(coeff.res[1,], c(0.975,0.025))
@@ -91,6 +97,9 @@ knitr::kable(rbind(basic_beta1, basic_beta2, basic_beta3, basic_beta4), digits =
 ```
 
 # Backward elimination
+
+[//]: # (Use backward elimination to select the relevant covariates and provide the chosen
+regression model.)
 
 From the previous section, we are suspicious about the significance of the coefficient $\beta_{4}$. For this reason, we will explore the significance of this covariate deeply with the bias corrected accelerated $BC_{a}$ bootstrap. In this case, we use again the residual bootstrap, but we fix the values corresponding to $\beta{1}$, $\beta{2}$ and $\beta{3}$. In other words, we compute only the effect of the residuals only over the covariate `x3`.
 
@@ -112,8 +121,79 @@ B = 1000
 bcanon(rres, B, res_rob_rg_x3, beta = rbeta.h, xdata = data3,alpha = c(0.025, 0.975))$confpoints
 ```
 
-
-
 # Confidence Intervals
 
+[//]: # (Provide 95% confidence intervals on the regression coeffcients.)
+
+```{r}
+model.rlm <- rlm(y ~  x1 + x2, data = data3, maxit = 200)
+knitr::kable(coef(summary(model.rlm)), digits = 3)
+```
+
+
+```{r}
+res_rob_rg <- function(x, beta, xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + x
+  bmodel <- rlm(y_fit ~ x1 + x2, data = xdata)
+  return(coef(bmodel))
+}
+
+rres    <- model.rlm$residuals
+rbeta.h <- coef(model.rlm)
+
+B <- 1000
+set.seed(1)
+coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = data3)$thetastar
+```
+
+```{r}
+par(mfrow=c(1,3))
+hist(coeff.res[1,], main = "Bootstrap beta1 (Intercept)", probability = T, xlab = "beta1")
+abline(v = rbeta.h[1], col ="blue")
+hist(coeff.res[2,], main = "Bootstrap beta2 (x1)", probability = T, xlab = "beta2")
+abline(v = rbeta.h[2], col ="blue")
+hist(coeff.res[3,], main = "Bootstrap beta3 (x2)", probability = T, xlab = "beta3")
+abline(v = rbeta.h[3], col ="blue")
+```
+
+```{r}
+basic_beta1 <- 2*rbeta.h[1] - quantile(coeff.res[1,], c(0.975,0.025))
+basic_beta2 <- 2*rbeta.h[2] - quantile(coeff.res[2,], c(0.975,0.025))
+basic_beta3 <- 2*rbeta.h[3] - quantile(coeff.res[3,], c(0.975,0.025))
+knitr::kable(rbind(basic_beta1, basic_beta2, basic_beta3), digits = 3)
+```
+
 # Mean Response
+
+[//]: # (uild a 95% confidence interval on the mean response when (x1; x2; x3) = (14; 14; 14).)
+
+```{r}
+# Model with only x1 and x2
+model.rlm <- rlm(y ~  x1 + x2, data = data3)
+coef(summary(model.rlm))
+fit_value <- predict(model.rlm, newdata = data.frame(cbind(x1 = 14, x2 = 14, x3 = 14)))
+fit_value
+
+
+res_rob_mean <- function(x,beta,xdata){
+  y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + x
+  bmodel <- rlm(y_fit ~ x1 + x2, data = xdata)
+  return(predict(bmodel, newdata = data.frame(cbind(x1 = 14, x2 = 14, x3 = 14))))
+}
+
+#take the best model in 3 (change this)
+rres    <- model.rlm$residuals
+rbeta.h <- coef(model.rlm)
+
+B <- 100
+set.seed(1)
+mean.response <- bootstrap(rres, B, res_rob_mean, beta = rbeta.h, xdata = data3)$thetastar
+
+
+hist(mean.response, main = "Mean Response")
+abline(v = fit_value, col = "blue")
+
+# Basic Bootstrap
+2*fit_value - quantile(mean.response, c(0.975,0.025))
+```
+

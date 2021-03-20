@@ -21,6 +21,8 @@ data3 <-  read.csv("data/data_3.csv", header = TRUE)
 colnames(data3)
 n <- nrow(data3)
 
+boxplot(data3$y ~ data3$x3)
+
 model.lm <- lm(y ~  x1 + x2 + x3, data = data3)
 summary(model.lm)$coef
 round(coef(model.lm),2)
@@ -175,28 +177,37 @@ rbeta.h
 # ---- Part 4 Mean Response ---------------------------
 ## 4. Build a 95% confidence interval on the mean response when (x1; x2; x3) = (14; 14; 14).
 
-res_rob_rg <- function(x,beta,xdata){
+
+# Theoretical model:
+
+model.rlm <- rlm(y ~  x1 + x2 + x3, data = data3)
+coef(summary(model.rlm))
+fit_value <- predict(model.rlm, newdata = data.frame(cbind(x1 = 14, x2 = 14, x3 = 14)))
+fit_value
+
+model.rlm <- rlm(y ~  x1 + x2, data = data3)
+coef(summary(model.rlm2))
+fit_value <- predict(model.rlm, newdata = data.frame(cbind(x1 = 14, x2 = 14, x3 = 14)))
+fit_value
+
+
+res_rob_mean <- function(x,beta,xdata){
   y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + x
   bmodel <- rlm(y_fit ~ x1 + x2, data = xdata)
-  return(predict(bmodel, data = c(14,14,14)))
+  return(predict(bmodel, newdata = data.frame(cbind(x1 = 14, x2 = 14, x3 = 14))))
 }
 
 #take the best model in 3 (change this)
-
-fit <- rlm(y~ x1 + x2, data = data3)
-rres    <- fit$residuals
-rbeta.h <- coef(fit)
+rres    <- model.rlm$residuals
+rbeta.h <- coef(model.rlm)
 
 B <- 100
 set.seed(1)
-coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = data3)$thetastar
+mean.response <- bootstrap(rres, B, res_rob_mean, beta = rbeta.h, xdata = data3)$thetastar
 coeff.res
 
-
+hist(coeff.res, main = "Mean Response")
 
 # Basic Bootstrap
 
-2*rbeta.h[1] - quantile(coeff.res[1,], c(0.975,0.025))
-2*rbeta.h[2] - quantile(coeff.res[2,], c(0.975,0.025))
-2*rbeta.h[3] - quantile(coeff.res[3,], c(0.975,0.025))
-2*rbeta.h[4] - quantile(coeff.res[4,], c(0.975,0.025))
+2*fit_value - quantile(mean.response, c(0.975,0.025))
