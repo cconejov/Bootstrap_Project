@@ -6,7 +6,6 @@ subparagraph: yes
 header-includes: |
   \usepackage{titlesec}
   \titlespacing{\title}{0pt}{\parskip}{-\parskip}
-
 title: "Bootstrap Project: Dataset 3"
 subtitle: Arturo Prieto Tirado, Cesar Conejo Villalobos
 ---
@@ -16,19 +15,15 @@ subtitle: Arturo Prieto Tirado, Cesar Conejo Villalobos
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(cache=TRUE,message=FALSE, warning=FALSE)
-
 # Load libraries/ data
-
 library(MASS)
 library(bootstrap)
-
 data3 <-  read.csv("data/data_3.csv", header = TRUE)
-
 ```
 
 # Introduction
 
-In this project, we study the dataset `data_3.csv` which contains four columns referring to a response variable `y` and 3 covariates `x1`, `x2`, and `x3` for `r nrow(data3)` observations. The goal of the task is to build a linear regression model to `y` in terms of some of the other three variables. However, if we apply a linear model, due to the data contains several outliers, it can be checked in the following picture how the error residuals are not normally distributed..
+In this project, we study the dataset `data_3.csv` which contains four columns referring to a response variable `y` and 3 covariates `x1`, `x2`, and `x3` for `r nrow(data3)` observations. The goal of the task is to build a linear regression model to `y` in terms of some of the other three variables. However, if we apply a linear model, due to the data containing several outliers, it can be checked in the following picture that the error residuals are not normally distributed.
 
 ```{r}
 model.lm <- lm(y ~  x1 + x2 + x3, data = data3)
@@ -36,7 +31,7 @@ par(mfrow=c(2,2))
 plot(model.lm)
 ```
 
-The coefficients for the linear model are given by $\beta_{1} =$ `r round(coef(model.lm)[1],2)`, (corresponding to the intercept) $\beta_{2} =$ `r round(coef(model.lm)[2],2)`, $\beta_{3} =$ `r round(coef(model.lm)[3],2)`, and $\beta_{4} =$ `r round(coef(model.lm)[4],2)`. As a result, we build a robust linear regression model `rlm()` from `MASS` package and use the bootstrap to study the significance of the regressors.
+The coefficients for the linear model are given by $\beta_{1} =$ `r round(coef(model.lm)[1],2)`, (corresponding to the intercept) $\beta_{2} =$ `r round(coef(model.lm)[2],2)`, $\beta_{3} =$ `r round(coef(model.lm)[3],2)`, and $\beta_{4} =$ `r round(coef(model.lm)[4],2)`. In order to correct for the outliers, we build a robust linear regression model `rlm()` from `MASS` package and use the bootstrap to study the significance of the regressors.
 
 ```{r eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 # Charge to the environment. Do not show results and code
@@ -62,10 +57,8 @@ res_rob_rg <- function(x, beta, xdata){
   bmodel <- rlm(y_fit ~ x1 + x2 + x3, data = xdata)
   return(coef(bmodel))
 }
-
 rres    <- model.rlm$residuals
 rbeta.h <- coef(model.rlm)
-
 B <- 1000
 set.seed(1)
 coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = data3)$thetastar
@@ -101,25 +94,7 @@ knitr::kable(rbind(basic_beta1, basic_beta2, basic_beta3, basic_beta4), digits =
 [//]: # (Use backward elimination to select the relevant covariates and provide the chosen
 regression model.)
 
-From the previous section, we are suspicious about the significance of the coefficient $\beta_{4}$. For this reason, we will explore the significance of this covariate deeply with the bias corrected accelerated $BC_{a}$ bootstrap. In this case, we use again the residual bootstrap, but we fix the values corresponding to $\beta{1}$, $\beta{2}$ and $\beta{3}$. In other words, we compute only the effect of the residuals only over the covariate `x3`.
-
-```{r}
-# Fitted values for theoretical betas
-y_predict <-  predict(model.rlm)
-
-res_rob_rg_x3 <- function(x, beta, xdata){
-  
-  y_bt <-  y_predict + x
-  y_bt <-  y_bt - (beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2)
-  data1_BT <-  data.frame(x3 = data3$x3,
-                          y = y_bt)
-  fit_BT <- rlm(y ~ x3 -1, data = data1_BT)$coefficients
-  return(fit_BT)
-}
-
-B = 1000
-bcanon(rres, B, res_rob_rg_x3, beta = rbeta.h, xdata = data3,alpha = c(0.025, 0.975))$confpoints
-```
+As it was shown in the previous section, $\beta_4$ is compatible with 0. This means that we can consider the effect of the variable $x_3$ to be not significant and thus, remove it from the model. The final model will then be $y=\beta_1+\beta_2 x_1+\beta_3 x_2$, with the remaining coefficients being significantly different than 0, as it is shown in the following section.
 
 # Confidence Intervals
 
@@ -137,10 +112,8 @@ res_rob_rg <- function(x, beta, xdata){
   bmodel <- rlm(y_fit ~ x1 + x2, data = xdata)
   return(coef(bmodel))
 }
-
 rres    <- model.rlm$residuals
 rbeta.h <- coef(model.rlm)
-
 B <- 1000
 set.seed(1)
 coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = data3)$thetastar
@@ -173,27 +146,19 @@ model.rlm <- rlm(y ~  x1 + x2, data = data3)
 coef(summary(model.rlm))
 fit_value <- predict(model.rlm, newdata = data.frame(cbind(x1 = 14, x2 = 14, x3 = 14)))
 fit_value
-
-
 res_rob_mean <- function(x,beta,xdata){
   y_fit  <- beta[1] + beta[2]*xdata$x1 + beta[3]*xdata$x2 + x
   bmodel <- rlm(y_fit ~ x1 + x2, data = xdata)
   return(predict(bmodel, newdata = data.frame(cbind(x1 = 14, x2 = 14, x3 = 14))))
 }
-
 #take the best model in 3 (change this)
 rres    <- model.rlm$residuals
 rbeta.h <- coef(model.rlm)
-
 B <- 100
 set.seed(1)
 mean.response <- bootstrap(rres, B, res_rob_mean, beta = rbeta.h, xdata = data3)$thetastar
-
-
 hist(mean.response, main = "Mean Response")
 abline(v = fit_value, col = "blue")
-
 # Basic Bootstrap
 2*fit_value - quantile(mean.response, c(0.975,0.025))
 ```
-
