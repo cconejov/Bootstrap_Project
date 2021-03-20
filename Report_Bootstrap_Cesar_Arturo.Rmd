@@ -100,11 +100,14 @@ As it was shown in the previous section, $\beta_4$ is compatible with 0. This me
 
 [//]: # (Provide 95% confidence intervals on the regression coeffcients.)
 
+The coefficients for the final model $y=\beta_1+\beta_2 x_1+\beta_3 x_2$ are shown in the following table. It can be seen how they are slightly different than the ones obtained for the full model.
+
 ```{r}
 model.rlm <- rlm(y ~  x1 + x2, data = data3, maxit = 200)
 knitr::kable(coef(summary(model.rlm)), digits = 3)
 ```
 
+The goal now is to obtain confidence intervals for the parameters of the simple model. In order to do this, we make use of the same residual bootstrap fashion used in part one to diminish the effect of outliers and reduce variability.
 
 ```{r}
 res_rob_rg <- function(x, beta, xdata){
@@ -119,6 +122,8 @@ set.seed(1)
 coeff.res <- bootstrap(rres, B, res_rob_rg, beta = rbeta.h, xdata = data3)$thetastar
 ```
 
+The bootstrap distributions obtained are shown in the following figures.
+
 ```{r}
 par(mfrow=c(1,3))
 hist(coeff.res[1,], main = "Bootstrap beta1 (Intercept)", probability = T, xlab = "beta1")
@@ -129,12 +134,16 @@ hist(coeff.res[3,], main = "Bootstrap beta3 (x2)", probability = T, xlab = "beta
 abline(v = rbeta.h[3], col ="blue")
 ```
 
+And the final confidence intervals are:
+
 ```{r}
 basic_beta1 <- 2*rbeta.h[1] - quantile(coeff.res[1,], c(0.975,0.025))
 basic_beta2 <- 2*rbeta.h[2] - quantile(coeff.res[2,], c(0.975,0.025))
 basic_beta3 <- 2*rbeta.h[3] - quantile(coeff.res[3,], c(0.975,0.025))
 knitr::kable(rbind(basic_beta1, basic_beta2, basic_beta3), digits = 3)
 ```
+
+It can be seen that none of the coefficients is compatible with 0, as we wanted.
 
 # Mean Response
 
