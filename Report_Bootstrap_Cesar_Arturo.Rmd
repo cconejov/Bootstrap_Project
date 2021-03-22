@@ -1,6 +1,6 @@
 ---
 output: 
-  html_document
+  pdf_document
 
 subparagraph: yes
 header-includes: |
@@ -18,8 +18,8 @@ knitr::opts_chunk$set(cache=TRUE,message=FALSE, warning=FALSE)
 # Load libraries/ data
 library(MASS)
 library(bootstrap)
-#data3 <-  read.csv("data/data_3.csv", header = TRUE)
-data3 <- read.csv("C:/Users/arpri/OneDrive/Escritorio/libros/master/Tercer Semicuatrimestre/Simulación y Métodos de Remuestreo/data_3.csv", header=TRUE)
+data3 <-  read.csv("data/data_3.csv", header = TRUE)
+#data3 <- read.csv("C:/Users/arpri/OneDrive/Escritorio/libros/master/Tercer Semicuatrimestre/Simulación y Métodos de Remuestreo/data_3.csv", header=TRUE)
 ```
 
 # Introduction
@@ -111,7 +111,7 @@ knitr::kable(rbind(basic_beta1, basic_beta2, basic_beta3, basic_beta4), digits =
 
 ## **(Use backward elimination to select the relevant covariates and provide the chosen regression model.)**
 
-As it was shown in the previous section, $\beta_4$ is compatible with 0. Since 0 is in the confidence interval, the $p$-value for the null hypothesis (coefficient not relevant) is greater than 0.05 (because we took 95\% confidence). Therefore, the null hypothesis is not rejected. This means that we can consider the effect of the variable $x_3$ to be not significant and thus, remove it from the model. The final model will then be $y=\beta_1+\beta_2 x_1+\beta_3 x_2$, with the remaining coefficients being significantly different than 0, as it is shown in the following section.
+As it was shown in the previous section, $\beta_4$ is compatible with 0. Since 0 is in the confidence interval, the $p$-value for the null hypothesis (coefficient not relevant) is greater than 0.05 (because we took $95\%$ confidence). Therefore, the null hypothesis is not rejected. This means that we can consider the effect of the variable $x_3$ to be not significant and thus, remove it from the model. The final model will then be $y = \beta_1 + \beta_2 x_1 + \beta_3 x_2$, with the remaining coefficients being significantly different than 0, as it is shown in the following section.
 
 # Confidence Intervals
 
@@ -168,7 +168,7 @@ It can be seen that none of the coefficients is compatible with 0, as we wanted.
 
 The main idea now is to use again the same bootstraping in residuals procedure but, instead of returning the coefficients each time and thus getting a bootstrap sample of coefficients as we did before, use this coefficients to predict a response. In order to do that, the simplest model will be used, that is, the model with $x_1$ and $x_2$ obtained in the previous parts.
 
-The following code shows how to obtain a bootstrap sample of predicted values when $x_i=14$ in the bootstraping residuals fashion. The main difference is the use of the "predict" function to calculate $\hat{y}=\hat{\beta_0}+14\hat{\beta_1}+14\hat{\beta_2}.
+The following code shows how to obtain a bootstrap sample of predicted values when $x_i=14$ in the bootstraping residuals fashion. The main difference is the use of the `predict` function to calculate $\hat{y}=\hat{\beta_0}+14\hat{\beta_1}+14\hat{\beta_2}$.
 
 ```{r}
 # Model with only x1 and x2
